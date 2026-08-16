@@ -1,7 +1,7 @@
 name: sync_lib
-description: A starting point for Dart libraries or applications.
-version: 1.0.0
-# repository: https://github.com/my_org/my_repo
+description: Biblioteca de sincronização Offline-First com resolução configurável de conflitos.
+version: 0.1.0
+repository: https://github.com/guilhermeguidat/tcc
 
 environment:
   sdk: ^3.8.1
