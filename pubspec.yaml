@@ -6,9 +6,8 @@ repository: https://github.com/guilhermeguidat/tcc
 environment:
   sdk: ^3.8.1
 
-# Add regular dependencies here.
 dependencies:
-  # path: ^1.8.0
+  http: ^1.2.0
 
 dev_dependencies:
   lints: ^5.0.0
