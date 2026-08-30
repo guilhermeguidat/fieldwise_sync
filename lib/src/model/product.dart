@@ -1,4 +1,13 @@
+import '../annotations.dart';
+import '../engine/field_rule.dart';
+
+part 'product.g.dart';
+
 /// Entidade de exemplo da Fase 1 (o "cano fecha" com uma única entidade).
+///
+/// A política de conflito é declarada por anotação em cada campo (OE3): o
+/// gerador (source_gen) lê essas anotações e emite [productFieldRules] no
+/// arquivo `product.g.dart`, consumido por `fieldMerge`.
 ///
 /// Dois campos de controle além dos dados de negócio:
 /// - [version]: número de versão do registro. É a base da **detecção de
@@ -7,12 +16,18 @@
 /// - [updatedAt]: instante da última alteração. Usado apenas como
 ///   **desempate na estratégia LWW** (Last Write Wins), nunca para detectar
 ///   conflito — relógio de celular não é confiável para isso.
+@SyncEntity()
 class Product {
   final String id;
+
+  /// Nome do produto: em conflito, vence a edição mais recente.
+  @Lww()
   final String name;
 
   // ponytail: price como double basta para a demo; se precisão monetária
   // virar requisito, trocar por int (centavos).
+  /// Preço: autoridade do servidor (preço tabelado não é sobrescrito pelo cliente).
+  @ServerWins()
   final double price;
 
   final int version;

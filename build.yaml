@@ -1,0 +1,14 @@
+targets:
+  $default:
+    builders:
+      sync_lib|sync_config:
+        enabled: true
+
+builders:
+  sync_config:
+    import: "package:sync_lib/builder.dart"
+    builder_factories: ["syncConfigBuilder"]
+    build_extensions: {".dart": [".sync_config.g.part"]}
+    auto_apply: dependents
+    build_to: cache
+    applies_builders: ["source_gen:combining_builder"]

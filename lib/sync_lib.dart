@@ -2,6 +2,7 @@
 /// conflitos. Núcleo em Dart puro (sem Flutter).
 library;
 
+export 'src/annotations.dart';
 export 'src/model/product.dart';
 export 'src/engine/conflict.dart';
 export 'src/outbox/outbox.dart';

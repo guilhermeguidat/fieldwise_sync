@@ -1,4 +1,7 @@
 import '../model/product.dart';
+import 'field_rule.dart';
+
+export 'field_rule.dart';
 
 /// O motor de conflitos — o núcleo acadêmico da biblioteca.
 ///
@@ -28,18 +31,6 @@ Product lww(Product incoming, Product current) =>
 /// descartada quando há conflito. Útil para dados "autoridade do servidor"
 /// (preço tabelado, estoque central) onde a cópia local não deve sobrescrever.
 Product serverWins(Product incoming, Product current) => current;
-
-/// Regra de resolução para **um** campo, no merge granular.
-enum FieldRule {
-  /// Vence o campo de quem tem o [Product.updatedAt] mais recente.
-  lww,
-
-  /// O valor do servidor prevalece neste campo.
-  serverWins,
-
-  /// O valor que chega (cliente) prevalece neste campo.
-  clientWins,
-}
 
 /// Field-Level Merge: resolve **campo a campo**, cada um pela sua [FieldRule].
 /// É a granularidade que dá nome ao OE3 — na mesma entidade, `name` pode seguir
