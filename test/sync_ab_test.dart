@@ -10,14 +10,13 @@ Product cafe({
   required double price,
   required int version,
   required DateTime updatedAt,
-}) =>
-    Product(
-      id: 'p1',
-      name: name,
-      price: price,
-      version: version,
-      updatedAt: updatedAt,
-    );
+}) => Product(
+  id: 'p1',
+  name: name,
+  price: price,
+  version: version,
+  updatedAt: updatedAt,
+);
 
 void main() {
   final t0 = DateTime.utc(2026, 1, 1, 8, 0);
@@ -54,7 +53,9 @@ void main() {
     await b.sync();
 
     // Editam offline o mesmo registro, baseados na v1.
-    a.edit(a.get('p1')!.copyWith(name: 'Café A', updatedAt: t2)); // mais recente
+    a.edit(
+      a.get('p1')!.copyWith(name: 'Café A', updatedAt: t2),
+    ); // mais recente
     b.edit(b.get('p1')!.copyWith(name: 'Café B', updatedAt: t1)); // mais antiga
 
     await a.sync(); // aplica sem conflito -> v2 "Café A"
@@ -69,7 +70,9 @@ void main() {
     await b.sync();
 
     a.edit(a.get('p1')!.copyWith(name: 'Café A', updatedAt: t1)); // mais antiga
-    b.edit(b.get('p1')!.copyWith(name: 'Café B', updatedAt: t2)); // mais recente
+    b.edit(
+      b.get('p1')!.copyWith(name: 'Café B', updatedAt: t2),
+    ); // mais recente
 
     await a.sync();
     await b.sync(); // conflito -> LWW -> B vence (t2 > t1)

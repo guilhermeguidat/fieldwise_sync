@@ -20,9 +20,19 @@ void main() {
   test('fieldMerge dirigido pelo mapa GERADO resolve por campo', () {
     // Cliente mais recente: vence o name (LWW); perde o price (Server Wins).
     final incoming = Product(
-        id: 'p1', name: 'Cliente', price: 99, version: 1, updatedAt: t2);
+      id: 'p1',
+      name: 'Cliente',
+      price: 99,
+      version: 1,
+      updatedAt: t2,
+    );
     final current = Product(
-        id: 'p1', name: 'Servidor', price: 20, version: 1, updatedAt: t1);
+      id: 'p1',
+      name: 'Servidor',
+      price: 20,
+      version: 1,
+      updatedAt: t1,
+    );
 
     final merged = fieldMerge(productFieldRules)(incoming, current);
 

@@ -10,11 +10,12 @@ import 'sync_transport.dart';
 /// Mesma interface do FakeServer — o SyncClient não muda ao trocar um pelo
 /// outro. O payload espelha os DTOs do backend (ver ADR 0001).
 class HttpTransport implements SyncTransport {
-  final String baseUrl; // ex.: http://10.0.2.2:8080 (host da máquina no emulador Android)
+  final String
+  baseUrl; // ex.: http://10.0.2.2:8080 (host da máquina no emulador Android)
   final http.Client _client;
 
   HttpTransport(this.baseUrl, {http.Client? client})
-      : _client = client ?? http.Client();
+    : _client = client ?? http.Client();
 
   @override
   Future<Product> push(Mutation m) async {

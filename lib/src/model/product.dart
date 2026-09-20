@@ -57,20 +57,20 @@ class Product {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'price': price,
-        'version': version,
-        'updatedAt': updatedAt.toUtc().toIso8601String(),
-      };
+    'id': id,
+    'name': name,
+    'price': price,
+    'version': version,
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+  };
 
   factory Product.fromJson(Map<String, dynamic> j) => Product(
-        id: j['id'] as String,
-        name: j['name'] as String,
-        price: (j['price'] as num).toDouble(),
-        version: j['version'] as int,
-        updatedAt: DateTime.parse(j['updatedAt'] as String),
-      );
+    id: j['id'] as String,
+    name: j['name'] as String,
+    price: (j['price'] as num).toDouble(),
+    version: j['version'] as int,
+    updatedAt: DateTime.parse(j['updatedAt'] as String),
+  );
 
   @override
   String toString() =>

@@ -9,8 +9,13 @@ Product p({
   required String name,
   required double price,
   required DateTime updatedAt,
-}) =>
-    Product(id: 'p1', name: name, price: price, version: 1, updatedAt: updatedAt);
+}) => Product(
+  id: 'p1',
+  name: name,
+  price: price,
+  version: 1,
+  updatedAt: updatedAt,
+);
 
 void main() {
   final t1 = DateTime.utc(2026, 1, 1, 9, 0); // mais cedo

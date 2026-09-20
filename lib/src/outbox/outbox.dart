@@ -13,19 +13,20 @@ class Mutation {
 /// dispositivo conseguir sincronizar. Garante que nenhuma alteração se perca
 /// entre "usuário salvou" e "servidor recebeu".
 ///
-/// ponytail: fila em memória por enquanto; na Fase 3 o Outbox passa a
-/// persistir no store local (SQLite) para sobreviver a fechar o app.
+/// Esta é a fila em memória, usada por [InMemoryDatabase]. A persistência
+/// (sobreviver a fechar o app) é responsabilidade do adapter concreto —
+/// ver [ILocalDatabase].
 class Outbox {
   final _pending = <Mutation>[];
 
   void enqueue(Mutation m) => _pending.add(m);
 
-  /// Retira tudo que está pendente para envio (esvazia a fila).
-  List<Mutation> drain() {
-    final copy = List<Mutation>.from(_pending);
-    _pending.clear();
-    return copy;
-  }
+  /// Próxima mutação a enviar, sem retirá-la: só sai da fila com [pop],
+  /// depois que o servidor confirmou. Se o envio falhar, ela continua aqui
+  /// e é reenviada no próximo sync (entrega ao menos uma vez).
+  Mutation? peek() => _pending.isEmpty ? null : _pending.first;
+
+  void pop() => _pending.removeAt(0);
 
   bool get isEmpty => _pending.isEmpty;
   int get length => _pending.length;
