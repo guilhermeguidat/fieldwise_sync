@@ -1,0 +1,9 @@
+{
+  "default": "LWW",
+  "entities": {
+    "Product": {
+      "name": "LWW",
+      "price": "SERVER_WINS"
+    }
+  }
+}
