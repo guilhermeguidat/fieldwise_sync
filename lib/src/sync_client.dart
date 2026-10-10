@@ -37,8 +37,7 @@ class SyncClient {
   void edit<T extends Syncable>(EntityType<T> type, T desired) {
     final before = _db.get(type.name, desired.id);
     final record = desired.toJson();
-    _db.put(type.name, record);
-    _db.enqueue(
+    _db.saveAndEnqueue(
       Mutation(
         type.name,
         record,

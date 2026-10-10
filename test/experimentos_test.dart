@@ -8,19 +8,22 @@ import '../tool/experimentos.dart';
 // as quebrar, a suíte acusa.
 
 void main() {
-  test('E1: com Outbox, nenhum pedido se perde mesmo com 50% de falha', () async {
-    final s = FakeServer.withPolicy([orderEntity]);
-    final r = await pedidosSobFalha(
-      (s, s),
-      falha: 0.5,
-      pedidosPorVendedor: 20,
-      confirmaAntesDeRemover: true,
-      rodada: 't',
-    );
-    expect(r.perdidos, 0);
-    expect(r.duplicados, 0);
-    expect(r.noServidor, 40);
-  });
+  test(
+    'E1: com Outbox, nenhum pedido se perde mesmo com 50% de falha',
+    () async {
+      final s = FakeServer.withPolicy([orderEntity]);
+      final r = await pedidosSobFalha(
+        (s, s),
+        falha: 0.5,
+        pedidosPorVendedor: 20,
+        confirmaAntesDeRemover: true,
+        rodada: 't',
+      );
+      expect(r.perdidos, 0);
+      expect(r.duplicados, 0);
+      expect(r.noServidor, 40);
+    },
+  );
 
   test('E2: fieldMerge não perde edição sem colisão e converge', () async {
     final s = FakeServer.withPolicy([customerEntity]);

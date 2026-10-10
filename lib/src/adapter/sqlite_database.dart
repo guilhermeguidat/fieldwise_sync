@@ -62,10 +62,19 @@ class SqliteDatabase implements ILocalDatabase {
   );
 
   @override
-  void enqueue(Mutation m) => _db.execute(
-    'INSERT INTO outbox (mutation) VALUES (?)',
-    [jsonEncode(m.toJson())],
-  );
+  void saveAndEnqueue(Mutation m) {
+    _db.execute('BEGIN');
+    try {
+      put(m.entity, m.record);
+      _db.execute('INSERT INTO outbox (mutation) VALUES (?)', [
+        jsonEncode(m.toJson()),
+      ]);
+      _db.execute('COMMIT');
+    } catch (_) {
+      _db.execute('ROLLBACK');
+      rethrow;
+    }
+  }
 
   @override
   Mutation? peekOutbox() {

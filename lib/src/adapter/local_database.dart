@@ -25,7 +25,11 @@ abstract interface class ILocalDatabase {
   void put(String entity, Json record);
 
   // --- outbox (FIFO) ---
-  void enqueue(Mutation m);
+
+  /// Grava `m.record` na réplica e enfileira [m] **atomicamente** (padrão
+  /// Outbox): se o app morrer no meio, ou ficam os dois ou nenhum. Gravar sem
+  /// enfileirar deixaria uma edição no aparelho que nunca seria enviada.
+  void saveAndEnqueue(Mutation m);
 
   /// Próxima mutação a enviar, sem retirá-la. Só sai com [popOutbox], após o
   /// servidor confirmar — se o envio falhar, permanece para a próxima
@@ -53,7 +57,10 @@ class InMemoryDatabase implements ILocalDatabase {
       (_records[entity] ??= {})[record['id'] as String] = record;
 
   @override
-  void enqueue(Mutation m) => _outbox.enqueue(m);
+  void saveAndEnqueue(Mutation m) {
+    put(m.entity, m.record);
+    _outbox.enqueue(m);
+  }
 
   @override
   Mutation? peekOutbox() => _outbox.peek();

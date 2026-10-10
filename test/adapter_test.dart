@@ -117,6 +117,21 @@ void main() {
     });
   });
 
+  test(
+    'OE2 gravar e enfileirar é atômico: falha na fila desfaz a gravação',
+    () {
+      final db = SqliteDatabase.inMemory();
+      final record = cafe('p1', 'Café', 10, t0).toJson();
+      // `base` impossível de serializar: a gravação do registro passa, a da
+      // fila falha no meio da transação.
+      final quebrada = Mutation('Product', record, 0, {'name': Object()});
+
+      expect(() => db.saveAndEnqueue(quebrada), throwsA(anything));
+      expect(db.get('Product', 'p1'), isNull); // nada de edição órfã
+      expect(db.pendingCount, 0);
+    },
+  );
+
   group('OE2 falha de rede no meio do envio', () {
     test('mutação não confirmada fica na fila e é reenviada', () async {
       final server = FakeServer();
