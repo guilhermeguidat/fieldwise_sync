@@ -48,20 +48,26 @@ class SyncConfigGenerator extends GeneratorForAnnotation<SyncEntity> {
       );
     }
 
+    final cls = element.name!;
+    final rules = _lowerFirst(cls);
     final entries = [
-      for (final e in _rulesOf(element).entries)
-        "'${e.key}': FieldRule.${e.value}",
+      for (final e in _rulesOf(element, annotation).entries)
+        "  '${e.key}': FieldRule.${e.value},\n",
     ];
-    final name = '${_lowerFirst(element.name!)}FieldRules';
-    return 'const $name = <String, FieldRule>{\n  ${entries.join(',\n  ')}\n};';
+    return '''
+const ${rules}FieldRules = <String, FieldRule>{
+${entries.join()}};
+
+const ${rules}Entity = EntityType<$cls>('$cls', $cls.fromJson, ${rules}FieldRules);''';
   }
 }
 
 /// Agrega todas as classes `@SyncEntity` do pacote num único
 /// `lib/sync_config.json`:
 /// `{ "default": "LWW", "entities": { "Classe": { "campo": "REGRA" } } }`.
-/// Campos sem anotação não entram (o servidor usa `default`, o mesmo
-/// fallback do `fieldMerge`).
+/// A política sai **resolvida**: todo campo de negócio aparece com a sua regra
+/// (a da anotação ou a `defaultRule` da entidade). `default` só cobre os
+/// campos de protocolo, como `updatedAt` (o mesmo fallback do `fieldMerge`).
 class SyncConfigJsonBuilder implements Builder {
   static const _entity = TypeChecker.typeNamed(SyncEntity);
 
@@ -80,6 +86,7 @@ class SyncConfigJsonBuilder implements Builder {
         final cls = a.element as ClassElement;
         entities[cls.name!] = _rulesOf(
           cls,
+          a.annotation,
         ).map((field, rule) => MapEntry(field, _snakeUpper(rule)));
       }
     }
@@ -91,12 +98,27 @@ class SyncConfigJsonBuilder implements Builder {
   }
 }
 
-/// `campo -> regra` para os campos anotados de uma classe. Compartilhado
+/// `campo -> regra` para cada campo de negócio de uma classe: a anotação do
+/// campo ou, na falta dela, a `defaultRule` da `@SyncEntity`. Compartilhado
 /// pelos dois geradores: é a única leitura das anotações.
-Map<String, String> _rulesOf(ClassElement element) => {
-  for (final field in element.fields)
-    if (!field.isStatic && _ruleOf(field) != null) field.name!: _ruleOf(field)!,
-};
+Map<String, String> _rulesOf(ClassElement element, ConstantReader entity) {
+  final entityDefault = entity
+      .read('defaultRule')
+      .revive()
+      .accessor
+      .split('.')
+      .last;
+  return {
+    for (final field in element.fields)
+      if (!field.isStatic &&
+          !field.isSynthetic && // getters como `total` não são dado
+          !_protocol.contains(field.name))
+        field.name!: _ruleOf(field) ?? entityDefault,
+  };
+}
+
+/// Campos de controle do protocolo (ADR 0001): não têm política.
+const _protocol = {'id', 'version', 'updatedAt'};
 
 String? _ruleOf(FieldElement field) {
   if (_lww.hasAnnotationOf(field)) return 'lww';

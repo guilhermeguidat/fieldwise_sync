@@ -1,13 +1,14 @@
 import '../annotations.dart';
+import '../engine/entity.dart';
 import '../engine/field_rule.dart';
 
 part 'product.g.dart';
 
-/// Entidade de exemplo da Fase 1 (o "cano fecha" com uma única entidade).
+/// Produto do catálogo do PDV.
 ///
 /// A política de conflito é declarada por anotação em cada campo (OE3): o
-/// gerador (source_gen) lê essas anotações e emite [productFieldRules] no
-/// arquivo `product.g.dart`, consumido por `fieldMerge`.
+/// gerador (source_gen) lê essas anotações e emite [productFieldRules] e
+/// [productEntity] no arquivo `product.g.dart`.
 ///
 /// Dois campos de controle além dos dados de negócio:
 /// - [version]: número de versão do registro. É a base da **detecção de
@@ -17,7 +18,8 @@ part 'product.g.dart';
 ///   **desempate na estratégia LWW** (Last Write Wins), nunca para detectar
 ///   conflito — relógio de celular não é confiável para isso.
 @SyncEntity()
-class Product {
+class Product implements Syncable {
+  @override
   final String id;
 
   /// Nome do produto: em conflito, vence a edição mais recente.
@@ -30,7 +32,9 @@ class Product {
   @ServerWins()
   final double price;
 
+  @override
   final int version;
+  @override
   final DateTime updatedAt;
 
   const Product({
@@ -56,7 +60,8 @@ class Product {
     );
   }
 
-  Map<String, dynamic> toJson() => {
+  @override
+  Json toJson() => {
     'id': id,
     'name': name,
     'price': price,
@@ -64,7 +69,7 @@ class Product {
     'updatedAt': updatedAt.toUtc().toIso8601String(),
   };
 
-  factory Product.fromJson(Map<String, dynamic> j) => Product(
+  factory Product.fromJson(Json j) => Product(
     id: j['id'] as String,
     name: j['name'] as String,
     price: (j['price'] as num).toDouble(),

@@ -1,21 +1,46 @@
-import '../model/product.dart';
+import '../engine/entity.dart';
 
-/// Uma mutação local pendente de envio: o estado que o cliente quer gravar
-/// mais a versão em que ele se baseou (a "base" da detecção de conflito).
+/// Uma mutação local pendente de envio: o estado que o cliente quer gravar,
+/// a versão em que ele se baseou (detecção de conflito) e [base], os valores
+/// anteriores dos campos que ele alterou (resolução por campo, ver
+/// `fieldMerge`).
 class Mutation {
-  final Product product;
+  final String entity;
+  final Json record;
   final int baseVersion;
+  final Json base;
 
-  const Mutation(this.product, this.baseVersion);
+  const Mutation(
+    this.entity,
+    this.record,
+    this.baseVersion, [
+    this.base = const {},
+  ]);
+
+  String get id => record['id'] as String;
+
+  Json toJson() => {
+    'entity': entity,
+    'record': record,
+    'baseVersion': baseVersion,
+    'base': base,
+  };
+
+  factory Mutation.fromJson(Json j) => Mutation(
+    j['entity'] as String,
+    j['record'] as Json,
+    j['baseVersion'] as int,
+    j['base'] as Json,
+  );
 }
 
 /// Outbox Pattern: fila local que retém as mutações feitas offline até o
 /// dispositivo conseguir sincronizar. Garante que nenhuma alteração se perca
 /// entre "usuário salvou" e "servidor recebeu".
 ///
-/// Esta é a fila em memória, usada por [InMemoryDatabase]. A persistência
+/// Esta é a fila em memória, usada por `InMemoryDatabase`. A persistência
 /// (sobreviver a fechar o app) é responsabilidade do adapter concreto —
-/// ver [ILocalDatabase].
+/// ver `ILocalDatabase`.
 class Outbox {
   final _pending = <Mutation>[];
 

@@ -7,8 +7,10 @@ import 'package:sync_lib/sync_lib.dart';
 import 'package:test/test.dart';
 
 // Integração real: dois SyncClient via HttpTransport contra o backend Spring
-// (Postgres). É o "punhado" de testes de integração que prova o cano
-// ponta-a-ponta de verdade (o resto da prova roda em Dart puro com FakeServer).
+// (Postgres), cada um autenticado como um vendedor. É o "punhado" de testes de
+// integração que prova o cano ponta-a-ponta de verdade (o resto da prova roda
+// em Dart puro com FakeServer). Também é o teste de conformidade do backend
+// com a especificação executável (FakeServer).
 //
 // Requer backend rodando. Rode com:
 //   docker compose up -d
@@ -19,77 +21,113 @@ import 'package:test/test.dart';
 
 void main() {
   final run = Platform.environment['RUN_E2E'] == '1';
+  final skip = run ? null : 'defina RUN_E2E=1 com o backend no ar';
   final baseUrl =
       Platform.environment['BACKEND_URL'] ?? 'http://localhost:8080';
 
-  test(
-    'conflito LWW ponta-a-ponta contra o backend real',
-    () async {
-      final id = 'e2e-${DateTime.now().microsecondsSinceEpoch}';
-      final transport = HttpTransport(baseUrl);
-      final a = SyncClient(transport);
-      final b = SyncClient(transport);
+  final t0 = DateTime.utc(2026, 1, 1, 8);
+  final t1 = DateTime.utc(2026, 1, 1, 9);
+  final t2 = DateTime.utc(2026, 1, 1, 10);
 
-      final t1 = DateTime.utc(2026, 1, 1, 9);
-      final t2 = DateTime.utc(2026, 1, 1, 10);
+  late HttpTransport ta;
+  late HttpTransport tb;
+  late SyncClient a;
+  late SyncClient b;
 
-      // A cria o registro e sincroniza; B puxa.
-      a.edit(
-        Product(id: id, name: 'Café', price: 10, version: 0, updatedAt: t1),
-      );
-      await a.sync();
-      await b.sync();
-      expect(b.get(id)!.name, 'Café');
+  setUp(() async {
+    if (!run) return;
+    ta = await HttpTransport.login(baseUrl, 'vendedor_a', 'senha');
+    tb = await HttpTransport.login(baseUrl, 'vendedor_b', 'senha');
+    a = SyncClient(ta);
+    b = SyncClient(tb);
+  });
+  tearDown(() {
+    if (!run) return;
+    ta.close();
+    tb.close();
+  });
 
-      // Ambos editam offline; A é mais recente e deve vencer o conflito.
-      a.edit(a.get(id)!.copyWith(name: 'Café A', updatedAt: t2));
-      b.edit(b.get(id)!.copyWith(name: 'Café B', updatedAt: t1));
-      await a.sync();
-      await b.sync();
+  String uid(String p) => '$p-${DateTime.now().microsecondsSinceEpoch}';
 
-      expect(b.get(id)!.name, 'Café A'); // LWW resolvido no servidor
+  test('sem token o servidor recusa', () async {
+    final anon = HttpTransport(baseUrl, 'invalido');
+    await expectLater(anon.pull(), throwsA(isA<SyncTransportException>()));
+    anon.close();
+  }, skip: skip);
 
-      transport.close();
-    },
-    skip: run ? null : 'defina RUN_E2E=1 com o backend no ar',
-  );
+  test('Product: name por LWW, price por Server Wins', () async {
+    final id = uid('p');
+    a.edit(
+      productEntity,
+      Product(id: id, name: 'Café', price: 10, version: 0, updatedAt: t0),
+    );
+    await a.sync();
+    await b.sync();
 
-  test(
-    'Field-Level Merge ponta-a-ponta: name por LWW, price por Server Wins',
-    () async {
-      // Prova a granularidade por campo contra o backend real: numa mesma
-      // entidade, o cliente vence `name` (regra LWW) mas perde `price` (regra
-      // Server Wins), simultaneamente. Config do servidor: name=LWW, price=SW.
-      final id = 'e2e-fm-${DateTime.now().microsecondsSinceEpoch}';
-      final transport = HttpTransport(baseUrl);
-      final a = SyncClient(transport);
-      final b = SyncClient(transport);
+    final pa = a.get(productEntity, id)!;
+    final pb = b.get(productEntity, id)!;
+    a.edit(
+      productEntity,
+      pa.copyWith(name: 'Café A', price: 50, updatedAt: t1),
+    );
+    await a.sync(); // sem conflito -> v2 (name 'Café A', price 50)
+    b.edit(
+      productEntity,
+      pb.copyWith(name: 'Café B', price: 88, updatedAt: t2),
+    );
+    await b.sync(); // colisão nos dois campos
 
-      final t0 = DateTime.utc(2026, 1, 1, 8);
-      final t1 = DateTime.utc(2026, 1, 1, 9);
-      final t2 = DateTime.utc(2026, 1, 1, 10);
+    final r = b.get(productEntity, id)!;
+    expect(r.name, 'Café B'); // LWW -> B é mais recente
+    expect(r.price, 50); // Server Wins -> servidor
+    expect(r.version, 3);
+  }, skip: skip);
 
-      // A cria (price 10) e sincroniza; B puxa a v1.
-      a.edit(
-        Product(id: id, name: 'Café', price: 10, version: 0, updatedAt: t0),
-      );
-      await a.sync();
-      await b.sync();
+  test('Customer: edições em campos diferentes se somam', () async {
+    final id = uid('c');
+    a.edit(
+      customerEntity,
+      Customer(
+        id: id,
+        name: 'Maria',
+        phone: '1111',
+        creditLimit: 500,
+        version: 0,
+        updatedAt: t0,
+      ),
+    );
+    await a.sync();
+    await b.sync();
 
-      // A edita mais cedo (t1): price 50 vira a autoridade do servidor.
-      a.edit(a.get(id)!.copyWith(name: 'Café A', price: 50, updatedAt: t1));
-      await a.sync(); // sem conflito -> v2 (name 'Café A', price 50)
+    final ca = a.get(customerEntity, id)!;
+    final cb = b.get(customerEntity, id)!;
+    a.edit(customerEntity, ca.copyWith(phone: '2222', updatedAt: t2));
+    b.edit(customerEntity, cb.copyWith(name: 'Maria Souza', updatedAt: t1));
+    await a.sync();
+    await b.sync();
 
-      // B edita mais tarde (t2) baseado ainda na v1: conflito -> merge por campo.
-      b.edit(b.get(id)!.copyWith(name: 'Café B', price: 88, updatedAt: t2));
-      await b.sync();
+    final r = b.get(customerEntity, id)!;
+    expect(r.phone, '2222');
+    expect(r.name, 'Maria Souza');
+  }, skip: skip);
 
-      final resolved = b.get(id)!;
-      expect(resolved.name, 'Café B'); // LWW -> B é mais recente, vence o name
-      expect(resolved.price, 50); // Server Wins -> price do servidor prevalece
+  test('Order: reenvio do mesmo pedido não duplica', () async {
+    final order = Order(
+      id: uid('o'),
+      customerId: 'c1',
+      seller: 'vendedor_a',
+      items: const [OrderItem(productId: 'p1', quantity: 3, unitPrice: 2.5)],
+      version: 0,
+      updatedAt: t0,
+    );
+    final m = Mutation('Order', order.toJson(), 0);
+    await ta.push(m); // chegou, mas a confirmação "se perdeu"
+    final again = await ta.push(m); // o Outbox reenvia
 
-      transport.close();
-    },
-    skip: run ? null : 'defina RUN_E2E=1 com o backend no ar',
-  );
+    final orders = (await ta.pull())['Order']!.where(
+      (o) => o['id'] == order.id,
+    );
+    expect(orders, hasLength(1));
+    expect(Order.fromJson(again).total, 7.5);
+  }, skip: skip);
 }

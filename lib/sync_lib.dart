@@ -3,6 +3,8 @@
 library;
 
 export 'src/annotations.dart';
+export 'src/model/customer.dart';
+export 'src/model/order.dart';
 export 'src/model/product.dart';
 export 'src/engine/conflict.dart';
 export 'src/outbox/outbox.dart';

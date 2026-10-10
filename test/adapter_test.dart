@@ -10,8 +10,8 @@ import 'package:test/test.dart';
 // OE2 — o Outbox persistido sobrevive a fechar o app e a falha de rede no
 // meio do envio: nada se perde.
 
-Product cafe(String name, double price, DateTime at) =>
-    Product(id: 'p1', name: name, price: price, version: 0, updatedAt: at);
+Product cafe(String id, String name, double price, DateTime at) =>
+    Product(id: id, name: name, price: price, version: 0, updatedAt: at);
 
 void main() {
   final t0 = DateTime.utc(2026, 1, 1, 8);
@@ -26,26 +26,56 @@ void main() {
   for (final entry in adapters.entries) {
     group('OE1 sobre ${entry.key}', () {
       test('Vendedor A/B com merge por campo: mesmo resultado', () async {
-        final server = FakeServer(strategy: fieldMerge(productFieldRules));
+        final server = FakeServer.withPolicy([productEntity]);
         final a = SyncClient(server, db: entry.value());
         final b = SyncClient(server, db: entry.value());
 
-        a.edit(cafe('Café', 10, t0));
+        a.edit(productEntity, cafe('p1', 'Café', 10, t0));
         await a.sync();
         await b.sync();
 
-        a.edit(a.get('p1')!.copyWith(name: 'Café A', price: 50, updatedAt: t1));
-        b.edit(b.get('p1')!.copyWith(name: 'Café B', price: 88, updatedAt: t2));
+        final pa = a.get(productEntity, 'p1')!;
+        final pb = b.get(productEntity, 'p1')!;
+        a.edit(
+          productEntity,
+          pa.copyWith(name: 'Café A', price: 50, updatedAt: t1),
+        );
+        b.edit(
+          productEntity,
+          pb.copyWith(name: 'Café B', price: 88, updatedAt: t2),
+        );
         await a.sync(); // sem conflito -> v2
-        await b.sync(); // conflito -> name LWW (B), price ServerWins (50)
+        await b
+            .sync(); // colisão nos dois campos -> name LWW (B), price SW (50)
         await a.sync();
 
         for (final c in [a, b]) {
-          expect(c.get('p1')!.name, 'Café B');
-          expect(c.get('p1')!.price, 50);
-          expect(c.get('p1')!.version, 3);
+          final r = c.get(productEntity, 'p1')!;
+          expect(r.name, 'Café B');
+          expect(r.price, 50);
+          expect(r.version, 3);
           expect(c.pending, 0);
         }
+      });
+
+      test('entidades diferentes com o mesmo id não se misturam', () async {
+        final db = entry.value();
+        final c = SyncClient(FakeServer(), db: db);
+        c.edit(productEntity, cafe('x', 'Café', 10, t0));
+        c.edit(
+          customerEntity,
+          Customer(
+            id: 'x',
+            name: 'Maria',
+            phone: '1',
+            creditLimit: 0,
+            version: 0,
+            updatedAt: t0,
+          ),
+        );
+        expect(c.get(productEntity, 'x')!.name, 'Café');
+        expect(c.get(customerEntity, 'x')!.name, 'Maria');
+        expect(c.all(productEntity), hasLength(1));
       });
     });
   }
@@ -63,7 +93,10 @@ void main() {
     test('edição offline sobrevive a fechar e reabrir o app', () async {
       // "Sessão 1": vende sem sinal e fecha o app antes de sincronizar.
       final db1 = SqliteDatabase(path);
-      SyncClient(FakeServer(), db: db1).edit(cafe('Café', 10, t0));
+      SyncClient(
+        FakeServer(),
+        db: db1,
+      ).edit(productEntity, cafe('p1', 'Café', 10, t0));
       expect(db1.pendingCount, 1);
       db1.close();
 
@@ -72,11 +105,14 @@ void main() {
       final db2 = SqliteDatabase(path);
       final client = SyncClient(server, db: db2);
       expect(client.pending, 1);
-      expect(client.get('p1')!.name, 'Café'); // réplica local também persistiu
+      expect(
+        client.get(productEntity, 'p1')!.name,
+        'Café',
+      ); // réplica persistiu
 
       await client.sync();
       expect(client.pending, 0);
-      expect((await server.pull()).single.name, 'Café');
+      expect((await server.pull())['Product']!.single['name'], 'Café');
       db2.close();
     });
   });
@@ -87,23 +123,22 @@ void main() {
       final flaky = _FlakyTransport(server, failOnPush: 2);
       final client = SyncClient(flaky, db: SqliteDatabase.inMemory());
 
-      client.edit(
-        Product(id: 'p1', name: 'A', price: 1, version: 0, updatedAt: t0),
-      );
-      client.edit(
-        Product(id: 'p2', name: 'B', price: 2, version: 0, updatedAt: t0),
-      );
+      client.edit(productEntity, cafe('p1', 'A', 1, t0));
+      client.edit(productEntity, cafe('p2', 'B', 2, t0));
       expect(client.pending, 2);
 
       // 1º sync: p1 entra, p2 falha -> p2 continua pendente.
       await expectLater(client.sync(), throwsA(isA<SocketException>()));
       expect(client.pending, 1);
-      expect((await server.pull()).map((p) => p.id), ['p1']);
+      expect((await server.pull())['Product']!.map((p) => p['id']), ['p1']);
 
       // 2º sync (rede voltou): p2 é entregue. Nada se perdeu.
       await client.sync();
       expect(client.pending, 0);
-      expect((await server.pull()).map((p) => p.id), containsAll(['p1', 'p2']));
+      expect(
+        (await server.pull())['Product']!.map((p) => p['id']),
+        containsAll(['p1', 'p2']),
+      );
     });
   });
 }
@@ -118,7 +153,7 @@ class _FlakyTransport implements SyncTransport {
   _FlakyTransport(this._inner, {required this.failOnPush});
 
   @override
-  Future<Product> push(Mutation m) {
+  Future<Json> push(Mutation m) {
     if (++_pushes == failOnPush) {
       throw const SocketException('rede caiu');
     }
@@ -126,5 +161,5 @@ class _FlakyTransport implements SyncTransport {
   }
 
   @override
-  Future<List<Product>> pull() => _inner.pull();
+  Future<Map<String, List<Json>>> pull() => _inner.pull();
 }

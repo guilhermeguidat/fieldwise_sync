@@ -10,3 +10,9 @@ const productFieldRules = <String, FieldRule>{
   'name': FieldRule.lww,
   'price': FieldRule.serverWins,
 };
+
+const productEntity = EntityType<Product>(
+  'Product',
+  Product.fromJson,
+  productFieldRules,
+);

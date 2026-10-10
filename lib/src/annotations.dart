@@ -14,10 +14,17 @@
 /// ```
 library;
 
+import 'engine/field_rule.dart';
+
 /// Marca uma classe como entidade sincronizável. O gerador emite o mapa de
-/// regras (`<nome>FieldRules`) a partir das anotações de campo dela.
+/// regras (`<nome>FieldRules`) e o descritor (`<nome>Entity`) a partir das
+/// anotações de campo dela.
+///
+/// [defaultRule] é a regra **da entidade**: vale para todo campo sem anotação
+/// própria. É o "por entidade" do OE3; a anotação de campo é o "por campo".
 class SyncEntity {
-  const SyncEntity();
+  final FieldRule defaultRule;
+  const SyncEntity({this.defaultRule = FieldRule.lww});
 }
 
 /// Campo resolvido por Last-Write-Wins (vence o `updatedAt` mais recente).

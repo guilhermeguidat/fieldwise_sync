@@ -1,6 +1,16 @@
 {
   "default": "LWW",
   "entities": {
+    "Customer": {
+      "name": "LWW",
+      "phone": "LWW",
+      "creditLimit": "SERVER_WINS"
+    },
+    "Order": {
+      "customerId": "SERVER_WINS",
+      "seller": "SERVER_WINS",
+      "items": "SERVER_WINS"
+    },
     "Product": {
       "name": "LWW",
       "price": "SERVER_WINS"

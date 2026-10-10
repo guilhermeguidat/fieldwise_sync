@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:sqlite3/sqlite3.dart';
 
-import '../model/product.dart';
+import '../engine/entity.dart';
 import '../outbox/outbox.dart';
 import 'local_database.dart';
 
@@ -23,14 +23,15 @@ class SqliteDatabase implements ILocalDatabase {
   /// [path] é o arquivo do banco; `':memory:'` para um banco volátil.
   SqliteDatabase(String path) : _db = sqlite3.open(path) {
     _db.execute('''
-      CREATE TABLE IF NOT EXISTS products (
-        id   TEXT PRIMARY KEY,
-        json TEXT NOT NULL
+      CREATE TABLE IF NOT EXISTS records (
+        entity TEXT NOT NULL,
+        id     TEXT NOT NULL,
+        json   TEXT NOT NULL,
+        PRIMARY KEY (entity, id)
       );
       CREATE TABLE IF NOT EXISTS outbox (
-        seq          INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_json TEXT    NOT NULL,
-        base_version INTEGER NOT NULL
+        seq      INTEGER PRIMARY KEY AUTOINCREMENT,
+        mutation TEXT NOT NULL
       );
     ''');
   }
@@ -38,40 +39,40 @@ class SqliteDatabase implements ILocalDatabase {
   SqliteDatabase.inMemory() : this(':memory:');
 
   @override
-  Product? get(String id) {
-    final rows = _db.select('SELECT json FROM products WHERE id = ?', [id]);
-    return rows.isEmpty ? null : _decode(rows.first['json'] as String);
+  Json? get(String entity, String id) {
+    final rows = _db.select(
+      'SELECT json FROM records WHERE entity = ? AND id = ?',
+      [entity, id],
+    );
+    return rows.isEmpty ? null : _decode(rows.first['json']);
   }
 
   @override
-  List<Product> all() => _db
-      .select('SELECT json FROM products')
-      .map((r) => _decode(r['json'] as String))
-      .toList();
+  List<Json> all(String entity) => [
+    for (final r in _db.select('SELECT json FROM records WHERE entity = ?', [
+      entity,
+    ]))
+      _decode(r['json']),
+  ];
 
   @override
-  void put(Product p) => _db.execute(
-    'INSERT OR REPLACE INTO products (id, json) VALUES (?, ?)',
-    [p.id, jsonEncode(p.toJson())],
+  void put(String entity, Json record) => _db.execute(
+    'INSERT OR REPLACE INTO records (entity, id, json) VALUES (?, ?, ?)',
+    [entity, record['id'], jsonEncode(record)],
   );
 
   @override
   void enqueue(Mutation m) => _db.execute(
-    'INSERT INTO outbox (product_json, base_version) VALUES (?, ?)',
-    [jsonEncode(m.product.toJson()), m.baseVersion],
+    'INSERT INTO outbox (mutation) VALUES (?)',
+    [jsonEncode(m.toJson())],
   );
 
   @override
   Mutation? peekOutbox() {
-    final rows = _db.select(
-      'SELECT product_json, base_version FROM outbox ORDER BY seq LIMIT 1',
-    );
-    if (rows.isEmpty) return null;
-    final r = rows.first;
-    return Mutation(
-      _decode(r['product_json'] as String),
-      r['base_version'] as int,
-    );
+    final rows = _db.select('SELECT mutation FROM outbox ORDER BY seq LIMIT 1');
+    return rows.isEmpty
+        ? null
+        : Mutation.fromJson(_decode(rows.first['mutation']));
   }
 
   @override
@@ -85,6 +86,5 @@ class SqliteDatabase implements ILocalDatabase {
 
   void close() => _db.dispose();
 
-  static Product _decode(String json) =>
-      Product.fromJson(jsonDecode(json) as Map<String, dynamic>);
+  static Json _decode(Object? json) => jsonDecode(json as String) as Json;
 }
