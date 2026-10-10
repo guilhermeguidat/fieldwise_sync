@@ -1,39 +1,56 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# sync_lib
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
+Biblioteca de sincronização Offline-First em Dart puro, com resolução de conflitos declarada por
+entidade e por campo. Núcleo do TCC (ver `../PLANO.md` e `../docs/decisoes/`).
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
+## Uso
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
-
-## Features
-
-TODO: List what your package can do. Maybe include images, gifs, or videos.
-
-## Getting started
-
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
-
-## Usage
-
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
+Declare a política na própria entidade:
 
 ```dart
-const like = 'sample';
+@SyncEntity()
+class Customer implements Syncable {
+  @Lww() final String name;            // colisão: vence a edição mais recente
+  @Lww() final String phone;
+  @ServerWins() final double creditLimit; // colisão: o servidor mantém
+  // id, version, updatedAt ...
+}
+
+@SyncEntity(defaultRule: FieldRule.serverWins) // regra da entidade
+class Order implements Syncable { ... }
 ```
 
-## Additional information
+Gere a configuração (`customerEntity`, `customerFieldRules` e `lib/sync_config.json` para o
+servidor):
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+```bash
+dart run build_runner build
+```
+
+E sincronize:
+
+```dart
+final transport = await HttpTransport.login(url, 'vendedor_a', 'senha');
+final client = SyncClient(transport, db: SqliteDatabase('local.db'));
+
+client.edit(customerEntity, maria.copyWith(phone: '2222', updatedAt: DateTime.now().toUtc()));
+await client.sync(); // envia a fila (remove só após confirmação) e puxa o estado do servidor
+```
+
+## Como funciona
+
+- **Detecção** por número de versão (`hasConflict`), nunca por relógio.
+- **Resolução** por estratégia injetável: `lww`, `serverWins` (registro inteiro) ou `fieldMerge`
+  (por campo, três vias: campo que só um lado alterou passa; a regra só arbitra colisão real).
+- **Outbox**: `edit` grava e enfileira; `sync` só retira da fila depois do ack do servidor.
+- **Adapter**: `ILocalDatabase` com `InMemoryDatabase` e `SqliteDatabase` (pacote `sqlite3`, FFI).
+- **Transporte**: `SyncTransport` com `HttpTransport` e `FakeServer`, a especificação executável do
+  protocolo que o backend espelha.
+
+## Testes e experimentos
+
+```bash
+dart test                               # suíte rápida, sem rede
+RUN_E2E=1 dart test -t e2e              # contra o backend real (Postgres + Spring no ar)
+dart run tool/experimentos.dart [--http] # Fase 5: perda e convergência sob falha de rede
+```
