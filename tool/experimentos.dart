@@ -21,6 +21,10 @@ Future<void> main(List<String> args) async {
   final baseUrl =
       Platform.environment['BACKEND_URL'] ?? 'http://localhost:8080';
 
+  // Prefixo dos ids: o banco do backend persiste entre execuções, e um id
+  // repetido cairia em registro de uma execução anterior.
+  final execucao = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+
   // Cada experimento recebe uma fábrica de "servidor": dois transportes (um por
   // vendedor) que enxergam o mesmo estado.
   Future<(SyncTransport, SyncTransport)> servidor(
@@ -57,7 +61,7 @@ Future<void> main(List<String> args) async {
         falha: p,
         pedidosPorVendedor: 100,
         confirmaAntesDeRemover: confirmado,
-        rodada: 'e1-${(p * 100).round()}-$confirmado',
+        rodada: '$execucao-e1-${(p * 100).round()}-$confirmado',
       );
       print(
         '| ${(p * 100).round()}% | ${confirmado ? 'Outbox (remove após confirmar)' : 'ingênua (remove antes de enviar)'} '
@@ -86,7 +90,7 @@ Future<void> main(List<String> args) async {
     final r = await edicaoConcorrente(
       await servidor(e.value),
       clientes: 200,
-      rodada: 'e2-${e.key.hashCode}',
+      rodada: '$execucao-e2-${e.key.hashCode}',
     );
     print(
       '| ${e.key} | ${r.semColisao} | ${r.perdidas} '
