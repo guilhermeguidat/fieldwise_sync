@@ -86,14 +86,21 @@ Future<void> main(List<String> args) async {
             'Customer': fieldMerge(customerFieldRules),
           },
         };
-  for (final e in estrategias.entries) {
+  // Última linha: a política gerada sob latência alta (até 100 ms por
+  // chamada), que embaralha mais a ordem de chegada dos dois vendedores.
+  final linhas = [
+    for (final e in estrategias.entries) (e.key, e.value, 3),
+    ('fieldMerge, latência até 100 ms', estrategias.values.last, 100),
+  ];
+  for (final (nome, estrategia, latencia) in linhas) {
     final r = await edicaoConcorrente(
-      await servidor(e.value),
+      await servidor(estrategia),
       clientes: 200,
-      rodada: '$execucao-e2-${e.key.hashCode}',
+      rodada: '$execucao-e2-${nome.hashCode}',
+      latenciaMaxMs: latencia,
     );
     print(
-      '| ${e.key} | ${r.semColisao} | ${r.perdidas} '
+      '| $nome | ${r.semColisao} | ${r.perdidas} '
       '(${(100 * r.perdidas / r.semColisao).toStringAsFixed(1)}%) | ${r.colisoes} '
       '| ${r.lwwCorretas}/${r.colisoesLww} | ${r.convergentes}/${r.clientes} |',
     );
@@ -221,10 +228,15 @@ Future<ResultadoE2> edicaoConcorrente(
   (SyncTransport, SyncTransport) servidor, {
   required int clientes,
   required String rodada,
+  int latenciaMaxMs = 3,
 }) async {
   final rnd = Random(_seed);
-  final a = SyncClient(RedeInstavel(servidor.$1, rnd));
-  final b = SyncClient(RedeInstavel(servidor.$2, rnd));
+  final a = SyncClient(
+    RedeInstavel(servidor.$1, rnd, latenciaMaxMs: latenciaMaxMs),
+  );
+  final b = SyncClient(
+    RedeInstavel(servidor.$2, rnd, latenciaMaxMs: latenciaMaxMs),
+  );
   final t0 = DateTime.utc(2026, 1, 1);
   String id(int i) => '$rodada-c$i';
 
