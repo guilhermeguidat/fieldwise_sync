@@ -1,6 +1,4 @@
-import '../annotations.dart';
-import '../engine/entity.dart';
-import '../engine/field_rule.dart';
+import 'package:fieldwise_sync/fieldwise_sync.dart';
 
 part 'customer.g.dart';
 

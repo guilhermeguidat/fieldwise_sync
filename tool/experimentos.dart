@@ -13,7 +13,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:fieldwise_sync/fieldwise_sync.dart';
-import 'package:fieldwise_sync/pdv.dart';
+import '../example/pdv.dart';
 
 const _seed = 42;
 

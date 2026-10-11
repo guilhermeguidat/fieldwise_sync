@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:fieldwise_sync/fieldwise_sync.dart';
-import 'package:fieldwise_sync/pdv.dart';
+import '../example/pdv.dart';
 import 'package:test/test.dart';
 
 // OE1 — o motor não depende do banco local: o MESMO cenário Vendedor A/B

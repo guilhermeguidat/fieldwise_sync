@@ -5,7 +5,7 @@
 // Em produção, troque FakeServer por HttpTransport.login(...) e passe
 // db: SqliteDatabase('local.db') ao SyncClient.
 import 'package:fieldwise_sync/fieldwise_sync.dart';
-import 'package:fieldwise_sync/pdv.dart';
+import 'pdv.dart';
 
 Future<void> main() async {
   final server = FakeServer.withPolicy([customerEntity]);

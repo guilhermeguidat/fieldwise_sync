@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:fieldwise_sync/fieldwise_sync.dart';
-import 'package:fieldwise_sync/pdv.dart';
+import '../example/pdv.dart';
 import 'package:test/test.dart';
 
 // Prova que a configuração por ANOTAÇÃO chega até o comportamento: os mapas
@@ -29,18 +29,31 @@ void main() {
     expect(orderFieldRules, isNot(contains('total'))); // getter, não dado
   });
 
-  test('o JSON do servidor é a mesma política (ADR 0002)', () {
-    final json = jsonDecode(File('lib/sync_config.json').readAsStringSync());
-    String snake(FieldRule r) => r.name
-        .replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]}')
-        .toUpperCase();
-    for (final e in [productEntity, customerEntity, orderEntity]) {
-      expect(
-        json['entities'][e.name],
-        e.rules.map((f, r) => MapEntry(f, snake(r))),
-      );
-    }
-  });
+  // O JSON é gerado no app (o pacote que declara as entidades) e é o que o
+  // servidor lê. Este teste prova a ADR 0002 e, de quebra, que o domínio do
+  // example/ (usado pelos testes e experimentos) tem a mesma política do app.
+  // Fora do monorepo (repo público) o app não existe e o teste é pulado.
+  final appJson = File('../app_pdv/lib/sync_config.json');
+  test(
+    'o JSON do servidor é a mesma política (ADR 0002)',
+    skip: appJson.existsSync() ? false : 'fora do monorepo',
+    () {
+      final json = jsonDecode(appJson.readAsStringSync());
+      String snake(FieldRule r) => r.name
+          .replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]}')
+          .toUpperCase();
+      final entities = [productEntity, customerEntity, orderEntity];
+      expect((json['entities'] as Map).keys.toSet(), {
+        for (final e in entities) e.name,
+      });
+      for (final e in entities) {
+        expect(
+          json['entities'][e.name],
+          e.rules.map((f, r) => MapEntry(f, snake(r))),
+        );
+      }
+    },
+  );
 
   test('fieldMerge dirigido pelo mapa GERADO resolve por campo', () {
     final t0 = DateTime.utc(2026, 1, 1, 8).toIso8601String();

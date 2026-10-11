@@ -59,8 +59,8 @@ await client.sync(); // envia a fila (remove só após confirmação) e puxa o e
 ```
 
 O `example/` roda dois clientes contra o servidor em memória e mostra a mesclagem por campo. O
-domínio de demonstração (`Product`, `Customer`, `Order`) está em `package:fieldwise_sync/pdv.dart`
-e serve de modelo para declarar as próprias entidades.
+domínio de demonstração (`Product`, `Customer`, `Order`) está em `example/pdv/` e serve de modelo
+para declarar as próprias entidades: o pacote em si não traz entidade nenhuma.
 
 ## Como funciona
 

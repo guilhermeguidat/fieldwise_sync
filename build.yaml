@@ -3,8 +3,10 @@ targets:
     builders:
       fieldwise_sync|sync_config:
         enabled: true
+      # A lib não tem entidades em lib/; o JSON do servidor é gerado no pacote
+      # que as declara (o app). Os modelos de example/ só precisam do *.g.dart.
       fieldwise_sync|sync_config_json:
-        enabled: true
+        enabled: false
 
 builders:
   sync_config:

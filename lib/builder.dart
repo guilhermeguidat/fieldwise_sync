@@ -10,9 +10,8 @@
 /// É a peça que torna o OE3 declarativo ponta a ponta: a política mora na
 /// entidade; nem o mapa Dart nem a config do servidor são escritos à mão.
 ///
-// Arquivo de build-time: importa analyzer/build/source_gen (dev_dependencies).
-// É o padrão para geradores in-package — daí o ignore abaixo.
-// ignore_for_file: depend_on_referenced_packages
+// Arquivo de build-time: importa analyzer/build/source_gen, que ficam em
+// dependencies porque o gerador roda no build_runner de quem usa o pacote.
 library;
 
 import 'dart:convert';
