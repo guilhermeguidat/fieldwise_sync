@@ -3,7 +3,8 @@ library;
 
 import 'dart:io';
 
-import 'package:sync_lib/sync_lib.dart';
+import 'package:fieldwise_sync/fieldwise_sync.dart';
+import 'package:fieldwise_sync/pdv.dart';
 import 'package:test/test.dart';
 
 // Integração real: dois SyncClient via HttpTransport contra o backend Spring

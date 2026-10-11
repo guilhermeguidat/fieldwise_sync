@@ -1,4 +1,5 @@
-import 'package:sync_lib/sync_lib.dart';
+import 'package:fieldwise_sync/fieldwise_sync.dart';
+import 'package:fieldwise_sync/pdv.dart';
 import 'package:test/test.dart';
 
 // Cenário "Vendedor A/B": dois SyncClient (dois dispositivos) sincronizando

@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:sync_lib/sync_lib.dart';
+import 'package:fieldwise_sync/fieldwise_sync.dart';
+import 'package:fieldwise_sync/pdv.dart';
 import 'package:test/test.dart';
 
 // OE1 — o motor não depende do banco local: o MESMO cenário Vendedor A/B
@@ -85,7 +86,7 @@ void main() {
     late String path;
 
     setUp(() {
-      tmp = Directory.systemTemp.createTempSync('sync_lib_');
+      tmp = Directory.systemTemp.createTempSync('fieldwise_sync_');
       path = '${tmp.path}/local.db';
     });
     tearDown(() => tmp.deleteSync(recursive: true));

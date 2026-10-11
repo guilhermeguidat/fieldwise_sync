@@ -1,21 +1,21 @@
 targets:
   $default:
     builders:
-      sync_lib|sync_config:
+      fieldwise_sync|sync_config:
         enabled: true
-      sync_lib|sync_config_json:
+      fieldwise_sync|sync_config_json:
         enabled: true
 
 builders:
   sync_config:
-    import: "package:sync_lib/builder.dart"
+    import: "package:fieldwise_sync/builder.dart"
     builder_factories: ["syncConfigBuilder"]
     build_extensions: {".dart": [".sync_config.g.part"]}
     auto_apply: dependents
     build_to: cache
     applies_builders: ["source_gen:combining_builder"]
   sync_config_json:
-    import: "package:sync_lib/builder.dart"
+    import: "package:fieldwise_sync/builder.dart"
     builder_factories: ["syncConfigJsonBuilder"]
     build_extensions: {"$lib$": ["sync_config.json"]}
     auto_apply: dependents

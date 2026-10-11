@@ -1,4 +1,5 @@
-import 'package:sync_lib/sync_lib.dart';
+import 'package:fieldwise_sync/fieldwise_sync.dart';
+import 'package:fieldwise_sync/pdv.dart';
 import 'package:test/test.dart';
 
 // Testes de unidade das estratégias de resolução (o motor / OE3). Aqui

@@ -1,7 +1,14 @@
-name: sync_lib
-description: Biblioteca de sincronização Offline-First com resolução configurável de conflitos.
+name: fieldwise_sync
+description: >-
+  Sincronização Offline-First em Dart com detecção de conflito por versão e
+  resolução configurável por campo (LWW, Server Wins, mesclagem de três vias).
 version: 0.1.0
-repository: https://github.com/guilhermeguidat/tcc
+repository: https://github.com/guilhermeguidat/fieldwise_sync
+topics:
+  - offline-first
+  - sync
+  - conflict-resolution
+  - codegen
 
 environment:
   sdk: ^3.8.1
@@ -9,11 +16,14 @@ environment:
 dependencies:
   http: ^1.2.0
   sqlite3: ^2.9.4
+  # Usados pelo gerador (lib/builder.dart), que roda no build_runner de quem
+  # depende do pacote; por isso não podem ser dev_dependencies.
+  analyzer: ^8.1.1
+  build: ^4.0.7
+  glob: ^2.2.0
+  source_gen: ^4.2.0
 
 dev_dependencies:
-  build: ^4.0.7
   build_runner: ^2.15.1
-  glob: ^2.2.0
   lints: ^5.0.0
-  source_gen: ^4.2.0
   test: ^1.24.0
