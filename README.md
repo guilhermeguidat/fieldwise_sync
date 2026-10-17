@@ -82,8 +82,9 @@ para declarar as próprias entidades: o pacote em si não traz entidade nenhuma.
 - `POST /sync/push`: recebe mutações `{entity, record, baseVersion, base}` e aplica a política.
 - `GET /sync/pull`: devolve o estado atual de cada entidade, com a versão de cada registro.
 
-A implementação de referência, em Spring Boot, lê a política direto do `sync_config.json` gerado,
-de modo que cliente e servidor nunca divergem nas regras.
+A implementação de referência, em Spring Boot, está em [`example/server/`](example/server/) e lê a
+política direto do `sync_config.json` gerado, de modo que cliente e servidor nunca divergem nas
+regras.
 
 ## Testes
 
