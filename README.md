@@ -51,7 +51,7 @@ dart run build_runner build
 E sincronize:
 
 ```dart
-final transport = await HttpTransport.login(url, 'vendedor_a', 'senha');
+final transport = await HttpTransport.login(url, usuario, senha);
 final client = SyncClient(transport, db: SqliteDatabase('local.db'));
 
 client.edit(customerEntity, maria.copyWith(phone: '2222', updatedAt: DateTime.now().toUtc()));

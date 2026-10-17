@@ -6,11 +6,9 @@ import '../engine/entity.dart';
 import '../outbox/outbox.dart';
 import 'sync_transport.dart';
 
-/// Implementação real do transporte: fala HTTP/JSON com o backend Spring.
-/// Mesma interface do FakeServer — o SyncClient não muda ao trocar um pelo
-/// outro. O payload é o `Mutation.toJson()` (ver ADR 0001 e 0003).
-///
-/// Os endpoints de sync exigem o token JWT obtido em [login].
+/// [SyncTransport] HTTP/JSON: `POST /sync/push` (corpo `Mutation.toJson()`) e
+/// `GET /sync/pull`, com o token de [login]. Há um servidor Spring de
+/// referência em `example/server/`.
 class HttpTransport implements SyncTransport {
   /// ex.: http://10.0.2.2:8080 (host da máquina no emulador Android)
   final String baseUrl;
@@ -20,7 +18,7 @@ class HttpTransport implements SyncTransport {
   HttpTransport(this.baseUrl, this.token, {http.Client? client})
     : _client = client ?? http.Client();
 
-  /// Autentica o vendedor e devolve um transporte já com o token.
+  /// Autentica em `POST /auth/login` e devolve um transporte com o token.
   static Future<HttpTransport> login(
     String baseUrl,
     String username,
@@ -76,6 +74,7 @@ class HttpTransport implements SyncTransport {
   void close() => _client.close();
 }
 
+/// Resposta HTTP diferente de 200.
 class SyncTransportException implements Exception {
   final String operation;
   final int statusCode;

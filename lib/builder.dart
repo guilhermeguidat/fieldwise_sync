@@ -1,17 +1,6 @@
-/// Geradores de configuração de conflitos a partir das anotações (`@SyncEntity`
-/// + `@Lww`/`@ServerWins`/`@ClientWins`). Rodam em tempo de build (source_gen).
-///
-/// Dois artefatos saem das MESMAS anotações (ADR 0002 — fonte única):
-/// - [SyncConfigGenerator]: o mapa Dart `<nome>FieldRules` em `*.g.dart`,
-///   consumido por `fieldMerge` (motor de referência / FakeServer);
-/// - [SyncConfigJsonBuilder]: `lib/sync_config.json`, a mesma política em
-///   formato agnóstico, lida pelo servidor (Spring) na inicialização.
-///
-/// É a peça que torna o OE3 declarativo ponta a ponta: a política mora na
-/// entidade; nem o mapa Dart nem a config do servidor são escritos à mão.
-///
-// Arquivo de build-time: importa analyzer/build/source_gen, que ficam em
-// dependencies porque o gerador roda no build_runner de quem usa o pacote.
+/// Geradores do `build_runner`. Das mesmas anotações saem
+/// `<nome>FieldRules`/`<nome>Entity` em cada `*.g.dart` ([SyncConfigGenerator])
+/// e `lib/sync_config.json` para o servidor ([SyncConfigJsonBuilder]).
 library;
 
 import 'dart:convert';
@@ -61,12 +50,10 @@ const ${rules}Entity = EntityType<$cls>('$cls', $cls.fromJson, ${rules}FieldRule
   }
 }
 
-/// Agrega todas as classes `@SyncEntity` do pacote num único
-/// `lib/sync_config.json`:
+/// Junta as classes `@SyncEntity` do pacote em `lib/sync_config.json`:
 /// `{ "default": "LWW", "entities": { "Classe": { "campo": "REGRA" } } }`.
-/// A política sai **resolvida**: todo campo de negócio aparece com a sua regra
-/// (a da anotação ou a `defaultRule` da entidade). `default` só cobre os
-/// campos de protocolo, como `updatedAt` (o mesmo fallback do `fieldMerge`).
+/// Todo campo de negócio sai com a regra resolvida; `default` só cobre os
+/// campos de protocolo.
 class SyncConfigJsonBuilder implements Builder {
   static const _entity = TypeChecker.typeNamed(SyncEntity);
 
@@ -97,9 +84,9 @@ class SyncConfigJsonBuilder implements Builder {
   }
 }
 
-/// `campo -> regra` para cada campo de negócio de uma classe: a anotação do
-/// campo ou, na falta dela, a `defaultRule` da `@SyncEntity`. Compartilhado
-/// pelos dois geradores: é a única leitura das anotações.
+/// `campo -> regra` de cada campo de negócio: a anotação do campo ou a
+/// `defaultRule` da entidade. Única leitura das anotações, usada pelos dois
+/// geradores.
 Map<String, String> _rulesOf(ClassElement element, ConstantReader entity) {
   final entityDefault = entity
       .read('defaultRule')
@@ -116,7 +103,7 @@ Map<String, String> _rulesOf(ClassElement element, ConstantReader entity) {
   };
 }
 
-/// Campos de controle do protocolo (ADR 0001): não têm política.
+/// Campos de controle do protocolo, sem política.
 const _protocol = {'id', 'version', 'updatedAt'};
 
 String? _ruleOf(FieldElement field) {
@@ -128,6 +115,6 @@ String? _ruleOf(FieldElement field) {
 
 String _lowerFirst(String s) => s[0].toLowerCase() + s.substring(1);
 
-/// `serverWins` -> `SERVER_WINS` (o enum do lado Java).
+/// `serverWins` -> `SERVER_WINS`, o formato das regras no JSON.
 String _snakeUpper(String camel) =>
     camel.replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m[0]}').toUpperCase();

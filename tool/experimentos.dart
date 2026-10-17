@@ -163,7 +163,7 @@ Future<ResultadoE1> pedidosSobFalha(
       );
     }
 
-    // ponytail: teto de tentativas só para o experimento terminar; o app
+    // Teto de tentativas só para o experimento terminar; o app
     // real tenta de novo a cada vez que a rede volta.
     for (var t = 0; db.pendingCount > 0 && t < 1000; t++) {
       tentativas++;

@@ -1,15 +1,11 @@
-/// Regra de resolução para **um** campo, no Field-Level Merge.
-///
-/// Fica em arquivo próprio (sem dependências) para poder ser importado tanto
-/// pelo motor ([fieldMerge]) quanto pelo `Product` — que passa a ter um `part`
-/// gerado a partir das anotações. Sem isso haveria import circular.
+/// Quem vence um campo que cliente e servidor alteraram, no `fieldMerge`.
 enum FieldRule {
-  /// Vence o campo de quem tem o `updatedAt` mais recente.
+  /// Vence o `updatedAt` mais recente.
   lww,
 
-  /// O valor do servidor prevalece neste campo.
+  /// Vence o servidor.
   serverWins,
 
-  /// O valor que chega (cliente) prevalece neste campo.
+  /// Vence o cliente.
   clientWins,
 }

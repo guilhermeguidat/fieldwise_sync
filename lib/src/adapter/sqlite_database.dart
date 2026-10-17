@@ -6,17 +6,9 @@ import '../engine/entity.dart';
 import '../outbox/outbox.dart';
 import 'local_database.dart';
 
-/// Adapter SQLite de [ILocalDatabase] — a implementação concreta prometida no
-/// pré-projeto. É o que roda no dispositivo: réplica local e Outbox
-/// sobrevivem a fechar o app.
-///
-/// Usa o pacote `sqlite3` (binding Dart puro, via FFI), e não `sqflite`, para
-/// que o adapter seja testável em `dart test` sem emulador. O motor de banco é
-/// o mesmo SQLite; só muda o binding.
-///
-/// ponytail: registros guardados como JSON numa coluna, não uma coluna por
-/// campo. O adapter é sobre persistência, não sobre consulta; se o app
-/// precisar filtrar por campo no SQL, aí sim vira esquema por coluna.
+/// [ILocalDatabase] sobre SQLite, via pacote `sqlite3` (FFI, sem Flutter). Num
+/// app Flutter, adicione `sqlite3_flutter_libs` para o binário nativo.
+/// Cada registro é guardado como JSON numa coluna de texto.
 class SqliteDatabase implements ILocalDatabase {
   final Database _db;
 

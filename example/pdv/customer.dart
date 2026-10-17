@@ -2,22 +2,20 @@ import 'package:fieldwise_sync/fieldwise_sync.dart';
 
 part 'customer.g.dart';
 
-/// Cliente do PDV. Dois vendedores podem atualizar o mesmo cadastro em campo,
-/// cada um com o que ouviu do cliente: é a entidade em que a mesclagem por
-/// campo mais aparece (um muda o telefone, outro o nome, nada se perde).
+/// Cliente. Se um vendedor muda o telefone e outro o nome, a mesclagem mantém
+/// os dois.
 @SyncEntity()
 class Customer implements Syncable {
   @override
   final String id;
 
-  /// Dados de contato: em colisão real, vence a edição mais recente.
   @Lww()
   final String name;
 
   @Lww()
   final String phone;
 
-  /// Limite de crédito: decisão da retaguarda, vendedor não sobrescreve.
+  /// Decisão da retaguarda: o vendedor não sobrescreve.
   @ServerWins()
   final double creditLimit;
 

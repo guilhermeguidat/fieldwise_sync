@@ -1,47 +1,25 @@
 import '../engine/entity.dart';
 import '../outbox/outbox.dart';
 
-/// Abstração de persistência local (padrão Adapter — OE1).
-///
-/// O motor de sincronização (`SyncClient`) fala só com esta interface: não
-/// sabe se está sobre memória, SQLite, Hive ou qualquer outro banco. Trocar a
-/// tecnologia de armazenamento é trocar a implementação, sem tocar na lógica
-/// de sync.
-///
-/// Cobre as duas coisas que precisam sobreviver no dispositivo: a réplica
-/// local dos registros e o Outbox (mutações pendentes de envio). O Outbox
-/// persistido é o que garante "venda registrada sem sinal não se perde" mesmo
-/// se o app for fechado antes de sincronizar.
-///
-/// Registros são guardados como [Json] e endereçados por (entidade, id): o
-/// adapter não conhece nenhuma classe de modelo.
-///
-/// ponytail: API síncrona, porque o binding `sqlite3` é síncrono. Se um
-/// adapter assíncrono (ex.: sqflite) for necessário, promover para Future.
+/// Persistência local: a réplica dos registros, por (entidade, id), e o
+/// Outbox. Implemente-a para usar outro banco. A API é síncrona.
 abstract interface class ILocalDatabase {
-  // --- réplica local ---
   Json? get(String entity, String id);
   List<Json> all(String entity);
   void put(String entity, Json record);
 
-  // --- outbox (FIFO) ---
-
-  /// Grava `m.record` na réplica e enfileira [m] **atomicamente** (padrão
-  /// Outbox): se o app morrer no meio, ou ficam os dois ou nenhum. Gravar sem
-  /// enfileirar deixaria uma edição no aparelho que nunca seria enviada.
+  /// Grava `m.record` e enfileira [m] atomicamente: edição gravada sem
+  /// enfileirar nunca seria enviada.
   void saveAndEnqueue(Mutation m);
 
-  /// Próxima mutação a enviar, sem retirá-la. Só sai com [popOutbox], após o
-  /// servidor confirmar — se o envio falhar, permanece para a próxima
-  /// tentativa. É o que dá a garantia "ao menos uma vez" do Outbox.
+  /// Próxima mutação a enviar, sem retirá-la. [popOutbox] só depois da
+  /// resposta do servidor: entrega ao menos uma vez.
   Mutation? peekOutbox();
   void popOutbox();
   int get pendingCount;
 }
 
-/// Implementação em memória: a mais simples possível e a usada nos testes
-/// rápidos. Também serve de referência de comportamento para os adapters
-/// concretos — o mesmo cenário deve produzir o mesmo resultado em qualquer um.
+/// [ILocalDatabase] em memória, sem persistência. Útil em testes.
 class InMemoryDatabase implements ILocalDatabase {
   final _records = <String, Map<String, Json>>{};
   final _outbox = Outbox();

@@ -2,14 +2,9 @@ import 'package:fieldwise_sync/fieldwise_sync.dart';
 
 part 'order.g.dart';
 
-/// Pedido fechado no checkout. É **só inserção**: nasce no dispositivo, com id
-/// gerado ali, e nunca é editado. Não disputa campo com ninguém; o que importa
-/// nele é o Outbox: pedido feito sem sinal tem de chegar ao servidor (OE2/OE4).
-///
-/// Regra da entidade: Server Wins. Se a confirmação de um envio se perder e o
-/// pedido for reenviado, o servidor já o tem e a cópia repetida não altera
-/// nada. O id gerado no cliente faz o reenvio cair no mesmo registro: entrega
-/// ao menos uma vez sem pedido duplicado.
+/// Pedido: só inserção, com id gerado no dispositivo. Server Wins faz um
+/// reenvio (resposta perdida) cair no mesmo registro sem alterá-lo, então não
+/// há pedido duplicado.
 @SyncEntity(defaultRule: FieldRule.serverWins)
 class Order implements Syncable {
   @override
@@ -60,8 +55,7 @@ class Order implements Syncable {
       'Order($id, $customerId, ${items.length} itens, v$version)';
 }
 
-/// Item do pedido. O preço unitário é copiado do produto no momento da venda:
-/// o pedido registra o que foi cobrado, mesmo que o preço mude depois.
+/// Item do pedido, com o preço cobrado no momento da venda.
 class OrderItem {
   final String productId;
   final int quantity;

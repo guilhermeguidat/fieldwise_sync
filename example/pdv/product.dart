@@ -2,31 +2,18 @@ import 'package:fieldwise_sync/fieldwise_sync.dart';
 
 part 'product.g.dart';
 
-/// Produto do catálogo do PDV.
-///
-/// A política de conflito é declarada por anotação em cada campo (OE3): o
-/// gerador (source_gen) lê essas anotações e emite [productFieldRules] e
-/// [productEntity] no arquivo `product.g.dart`.
-///
-/// Dois campos de controle além dos dados de negócio:
-/// - [version]: número de versão do registro. É a base da **detecção de
-///   conflito** (o cliente informa em que versão baseou a edição; se o
-///   servidor já está em outra, houve conflito).
-/// - [updatedAt]: instante da última alteração. Usado apenas como
-///   **desempate na estratégia LWW** (Last Write Wins), nunca para detectar
-///   conflito — relógio de celular não é confiável para isso.
+/// Produto do catálogo. O `build_runner` gera [productFieldRules] e
+/// [productEntity] em `product.g.dart`.
 @SyncEntity()
 class Product implements Syncable {
   @override
   final String id;
 
-  /// Nome do produto: em conflito, vence a edição mais recente.
   @Lww()
   final String name;
 
-  // ponytail: price como double basta para a demo; se precisão monetária
-  // virar requisito, trocar por int (centavos).
-  /// Preço: autoridade do servidor (preço tabelado não é sobrescrito pelo cliente).
+  /// Preço tabelado: o cliente não sobrescreve.
+  // Em produção, prefira centavos (int) a double.
   @ServerWins()
   final double price;
 

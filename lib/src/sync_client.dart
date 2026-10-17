@@ -3,16 +3,9 @@ import 'engine/conflict.dart';
 import 'outbox/outbox.dart';
 import 'transport/sync_transport.dart';
 
-/// O cliente de sincronização que roda em cada dispositivo (cada "vendedor").
-///
-/// Fluxo Offline-First:
-/// - [edit] grava no banco local e enfileira no Outbox — funciona sem rede.
-/// - [sync] drena o Outbox para o servidor, aplica o estado resolvido e
-///   puxa de volta a fonte da verdade. O servidor é a autoridade após o sync.
-///
-/// Só conhece [ILocalDatabase] (onde persistir) e [SyncTransport] (com quem
-/// falar). Trocar banco ou servidor não toca nesta classe. Também não conhece
-/// nenhuma entidade: recebe o [EntityType] gerado de cada uma.
+/// Cliente de sincronização de um dispositivo. [edit] funciona offline; [sync]
+/// envia as pendências e traz o estado do servidor. Sem `db`, usa
+/// [InMemoryDatabase].
 class SyncClient {
   final SyncTransport _transport;
   final ILocalDatabase _db;
@@ -28,12 +21,11 @@ class SyncClient {
   List<T> all<T extends Syncable>(EntityType<T> type) =>
       _db.all(type.name).map(type.fromJson).toList();
 
+  /// Mutações na fila, ainda não enviadas.
   int get pending => _db.pendingCount;
 
-  /// Edição (ou criação) offline. A versão base é a que o cliente conhece
-  /// hoje (0 se o registro é novo); o `base` da mutação guarda o valor
-  /// anterior de cada campo alterado, para o servidor separar edição
-  /// concorrente de colisão real.
+  /// Cria ou edita [desired] localmente e o enfileira para envio. Atualize o
+  /// `updatedAt` antes: é ele que desempata o LWW.
   void edit<T extends Syncable>(EntityType<T> type, T desired) {
     final before = _db.get(type.name, desired.id);
     final record = desired.toJson();
@@ -47,12 +39,9 @@ class SyncClient {
     );
   }
 
-  /// Sincroniza com o servidor: envia pendências, aplica o que voltou
-  /// resolvido e puxa o estado atual.
-  ///
-  /// Cada mutação só sai do Outbox depois que o servidor a confirmou. Se o
-  /// envio falhar no meio, o que não foi confirmado fica na fila e é
-  /// reenviado no próximo [sync] — nada se perde (OE2).
+  /// Envia o Outbox e puxa o estado do servidor. Cada mutação só sai da fila
+  /// após a resposta do servidor; se o envio falhar, a exceção do transporte
+  /// sobe e o restante fica para o próximo [sync].
   Future<void> sync() async {
     for (var m = _db.peekOutbox(); m != null; m = _db.peekOutbox()) {
       final resolved = await _transport.push(m);
