@@ -16,18 +16,15 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ObjectNode;
 
-/// Endpoints de sincronização. Espelha exatamente a lógica do FakeServer da
-/// fieldwise_sync (que é a especificação executável do protocolo — ver ADR 0001 e
-/// 0003): detecção por versão + resolução configurável por campo
-/// (Field-Level Merge de três vias). Não conhece nenhuma entidade: a política
-/// de cada uma vem de `sync_config.json`.
+/// Endpoints de sincronização, com a mesma lógica do `FakeServer` da
+/// fieldwise_sync: detecção por versão e mesclagem de três vias. Não conhece
+/// nenhuma entidade; a política vem de `sync_config.json`.
 @RestController
 @RequestMapping("/sync")
 public class SyncController {
 
-    /// Uma mutação: o estado desejado, a versão em que o cliente baseou a
-    /// edição (detecção) e `base`, o valor anterior de cada campo que ele
-    /// alterou (resolução por campo). É o `Mutation.toJson()` da lib.
+    /// O `Mutation.toJson()` da lib: registro desejado, versão base e `base`
+    /// (valor anterior de cada campo alterado).
     public record PushRequest(String entity, ObjectNode record, long baseVersion, ObjectNode base) {
     }
 
@@ -48,9 +45,8 @@ public class SyncController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "entidade desconhecida: " + req.entity());
         }
         String id = req.record().get("id").asText();
-        // Registro novo disputado por dois pushes: os dois veem "não existe", o
-        // segundo INSERT falha na chave primária e o cliente reenvia no próximo
-        // sync, já como conflito. Nada se perde.
+        // Dois pushes do mesmo registro novo: o segundo INSERT falha na chave
+        // primária e o cliente reenvia no próximo sync, já como conflito.
         ObjectNode current = repo.findForUpdate(req.entity(), id)
                 .map(r -> (ObjectNode) json.readTree(r.getJson()))
                 .orElse(null);
@@ -79,11 +75,9 @@ public class SyncController {
                 Collectors.mapping(r -> json.readTree(r.getJson()), Collectors.toList())));
     }
 
-    /// Field-Level Merge de três vias, campo a campo (espelha `fieldMerge`):
-    /// cliente não alterou -> servidor; só o cliente alterou -> cliente;
-    /// os dois alteraram -> a regra que a política (gerada das anotações Dart)
-    /// define para o campo. O LWW usa o updatedAt do registro (mesma limitação
-    /// assumida na lib).
+    /// Mesclagem de três vias, como `fieldMerge`: o campo que só um lado
+    /// alterou fica com esse lado; o que os dois alteraram segue a regra do
+    /// campo. O LWW compara o `updatedAt` do registro inteiro.
     private ObjectNode merge(String entity, ObjectNode incoming, ObjectNode current, ObjectNode base) {
         boolean incomingNewer = updatedAt(incoming).isAfter(updatedAt(current));
         ObjectNode merged = current.deepCopy();
@@ -108,8 +102,7 @@ public class SyncController {
         };
     }
 
-    /// Igualdade de valores JSON com 50 == 50.0 (o mesmo preço pode chegar
-    /// como inteiro ou decimal). Espelha `sameValue` da lib.
+    /// Igualdade de valores JSON com 50 == 50.0, como `sameValue`.
     private static boolean same(JsonNode a, JsonNode b) {
         return a.equals((x, y) -> x.equals(y)
                 || x.isNumber() && y.isNumber() && x.decimalValue().compareTo(y.decimalValue()) == 0

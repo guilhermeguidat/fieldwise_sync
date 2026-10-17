@@ -9,12 +9,9 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.util.Map;
 
-/// Política de resolução de conflitos, lida de `sync_config.json` — o arquivo
-/// que o codegen da fieldwise_sync gera a partir das anotações do modelo Dart
-/// (ADR 0002). O servidor não escreve política nenhuma à mão: só obedece.
-///
-/// O arquivo precisa estar no classpath (ex.: `src/main/resources/`). Mudou a
-/// anotação: `build_runner`, copiar o JSON e reiniciar o servidor.
+/// Política de conflito lida de `sync_config.json`, gerado pelo `build_runner`
+/// a partir das anotações. O arquivo precisa estar no classpath (ex.:
+/// `src/main/resources/`).
 @Component
 public class SyncPolicy {
 
@@ -31,15 +28,13 @@ public class SyncPolicy {
                 json.convertValue(tree.get("entities"), new TypeReference<>() {}));
     }
 
-    /// A entidade está na política? Só entidades `@SyncEntity` da lib são
-    /// aceitas pelo `/sync/push`.
+    /// Se a entidade está na política; o `/sync/push` rejeita as demais.
     public boolean knows(String entity) {
         return config.entities().containsKey(entity);
     }
 
-    /// Regra do campo. A política gerada já vem resolvida (anotação do campo
-    /// ou `defaultRule` da entidade); o `default` global só cobre os campos de
-    /// protocolo, como `updatedAt` (mesmo fallback do `fieldMerge` na lib).
+    /// Regra do campo. O `default` só cobre os campos de protocolo, como
+    /// `updatedAt`.
     public FieldRule ruleFor(String entity, String field) {
         return config.entities()
                 .getOrDefault(entity, Map.of())
